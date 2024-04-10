@@ -2,10 +2,29 @@ const Jimp = require('jimp');
 const inquirer = require('inquirer');
 const fs = require('fs');
 
+const changeImg = (image, editOptions) => {
+    switch (editOptions){
+        case 'make image brighter':
+            image.brightness(10);
+            break;
+        case 'increase contrast':
+            image.contrast( 10 );
+            break;
+        case 'make image b&w':
+            image.greyscale();  
+            break;
+        case 'invert image':
+            image.invert();
+            break;
+    }
+};
 
-const addTextWatermarkToImage = async function(inputFile, outputFile, text) {
+const addTextWatermarkToImage = async function(inputFile, outputFile, text, editOptions) {
     try {
         const image = await Jimp.read(inputFile);
+
+        changeImg(image, editOptions);
+
         const font = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
         const txtData = {
             text,
@@ -25,9 +44,12 @@ const addTextWatermarkToImage = async function(inputFile, outputFile, text) {
     }
 };
 
-const addImageWatermarkToImage = async function(inputFile, outputFile, watermarkFile){
+const addImageWatermarkToImage = async function(inputFile, outputFile, watermarkFile, editOptions){
     try {
         const image = await Jimp.read(inputFile);
+
+        changeImg(image, editOptions);
+        
         const watermark = await Jimp.read(watermarkFile);
         watermark.resize(50, Jimp.AUTO)
         const x = image.getWidth() / 2 - watermark.getWidth() / 2;
@@ -54,13 +76,29 @@ const prepereOutputFilename = (filname) => {
     return arr[0] + '-with-watermark.' + arr[1];
 };
 
+const editOpt = async (value) => {
+
+    if(value){
+        const editOptions = await inquirer.prompt ([{
+            name: 'editOptions',
+            message: 'Please choose edit option',
+            type: 'list',
+            choices: ['make image brighter', 'increase contrast', 'make image b&w', 'invert image' ],
+        }]);
+        return editOptions.editOptions;
+    }
+    else{
+        return 0;
+    }
+};
+
 
 const startApp = async () => {
 
     //Ask if user is ready
     const answer = await inquirer.prompt([{
         name: 'start',
-        messange: 'Hi! Welcome to "Watermark manager". Copy your image files to `/img` folder. Then you\'ll be able to use them in the app. Are you ready?',
+        message: 'Hi! Welcome to "Watermark manager". Copy your image files to `/img` folder. Then you\'ll be able to use them in the app. Are you ready?',
         type: 'confirm',
     }]);
 
@@ -71,15 +109,25 @@ const startApp = async () => {
     const options = await inquirer.prompt([{
         name:'inputImage',
         type: 'input',
-        messange: 'What file do you want to mark?',
+        message: 'What file do you want to mark?',
         default: 'test.jpg',
-    }, {
+    }]);
+
+    const editImage = await inquirer.prompt([{
+        name: 'edit',
+        message: `Do you want to edit ${options.inputImage}`,
+        type: 'confirm',
+    }]);
+
+    const editOptions =  await editOpt(editImage.edit);
+
+    const choiceWatermark = await inquirer.prompt ([{
         name: 'watermarkType',
         type: 'list',
         choices: ['Text watermark', 'Image watermark'],
     }]);
 
-    if(options.watermarkType === 'Text watermark') {
+    if(choiceWatermark.watermarkType === 'Text watermark') {
         const text = await inquirer.prompt([{
           name: 'value',
           type: 'input',
@@ -87,7 +135,7 @@ const startApp = async () => {
         }]);
         options.watermarkText = text.value;
         if (fs.existsSync('./img/' + options.inputImage)){
-            addTextWatermarkToImage('./img/' + options.inputImage, './img/' + prepereOutputFilename(options.inputImage), options.watermarkText);
+            addTextWatermarkToImage('./img/' + options.inputImage, './img/' + prepereOutputFilename(options.inputImage), options.watermarkText, editOptions);
         } else {
             console.log('Ups something went wrong... Try again');
             startApp();
@@ -101,11 +149,12 @@ const startApp = async () => {
           default: 'logo.png',
         }]);
         options.watermarkImage = image.filename;
-        (fs.existsSync('./img/' + options.inputImage) && fs.existsSync('./img/' + options.watermarkImage)) ? 
-        addImageWatermarkToImage('./img/' + options.inputImage, './img/' + prepereOutputFilename(options.inputImage), './img/' + options.watermarkImage)
-        :
+        if (fs.existsSync('./img/' + options.inputImage) && fs.existsSync('./img/' + options.watermarkImage)){
+        addImageWatermarkToImage('./img/' + options.inputImage, './img/' + prepereOutputFilename(options.inputImage), './img/' + options.watermarkImage, editOptions)
+        } else {
         console.log('Ups something went wrong... Try again');
         startApp();
+        }
       }
 
 };
