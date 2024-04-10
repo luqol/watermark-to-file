@@ -14,6 +14,9 @@ const addTextWatermarkToImage = async function(inputFile, outputFile, text) {
 
     image.print(font, 0, 0, txtData, image.getWidth(), image.getHeight());
     await image.quality(100).writeAsync(outputFile);
+    
+    console.log("Watermark added. Path: " + outputFile);
+    startApp();
 };
 
 const addImageWatermarkToImage = async function(inputFile, outputFile, watermarkFile){
@@ -29,6 +32,8 @@ const addImageWatermarkToImage = async function(inputFile, outputFile, watermark
     });
 
     await image.quality(100).writeAsync(outputFile);
+    console.log("Watermark added. Path: " + outputFile);
+    startApp();
 };
 
 const prepereOutputFilename = (filname) => {
@@ -91,4 +96,4 @@ const startApp = async () => {
 
 };
 
-startApp(0);
+startApp();
